@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('metas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
+            $table->foreignId('categoria_id')->nullable()->constrained('categorias')->nullOnDelete();
             $table->string('descricao');
             $table->enum('status', ['CUMPRIDA', 'PARCIAL', 'NAO_CUMPRIDA'])->default('NAO_CUMPRIDA');
             $table->enum('periodo', ['SEMANAL', 'MENSAL', 'ANUAL']);

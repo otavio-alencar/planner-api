@@ -19,6 +19,16 @@ class Meta extends Model
         'data_inicio',
         'data_fim',
     ];
-    
+
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class);
+    }
+
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class);
+    }
+
 
 }
