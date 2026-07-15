@@ -21,4 +21,12 @@ class Usuario extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function metas(){
+        return $this->hasMany(Meta::class, 'usuario_id');
+    }
+
+    public function tarefas(){
+        return $this->hasMany(Tarefa::class, 'usuario_id');
+    }
 }
