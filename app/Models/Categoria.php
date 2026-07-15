@@ -23,4 +23,8 @@ class Categoria extends Model
         return $this->hasMany(Tarefa::class, 'categoria_id');
     }
 
+    public function lembretes(){
+        return $this->hasMany(Lembrete::class, 'categoria_id');
+    }
+
 }
