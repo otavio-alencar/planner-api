@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tarefas', function (Blueprint $table) {
             $table->id();
-            $table->foreingId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
+            $table->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
             $table->foreignId('categoria_id')->nullable()->constrained('categorias')->nullOnDelete();
             $table->string('descricao');
             $table->enum('status', ['CUMPRIDA', 'PARCIAL', 'NAO_CUMPRIDA'])->default('NAO_CUMPRIDA');
