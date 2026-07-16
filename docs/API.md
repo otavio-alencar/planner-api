@@ -213,3 +213,42 @@ SEMANAL
 MENSAL
 ANUAL
 ```
+
+### Buscar metas por descrição
+
+A busca é feita usando o parâmetro `busca`.
+
+Exemplo de rota:
+
+```http
+GET /api/metas?busca=projeto
+
+Requisição:
+
+busca: texto que será procurado na descrição da meta.
+O parâmetro é opcional.
+Não possui corpo JSON.
+
+{
+  "data": [
+    {
+      "id": 2,
+      "descricao": "Finalizar projeto do planner",
+      "status": "EM_ANDAMENTO",
+      "periodo": "MENSAL",
+      "data_inicio": "2026-07-01",
+      "data_fim": "2026-07-31",
+      "categoria": {
+        "id": 1,
+        "nome": "Faculdade",
+        "cor": "#D45D8C"
+      }
+    }
+  ]
+}
+
+Quando não existir nenhuma meta correspondente:
+
+{
+  "data": []
+}

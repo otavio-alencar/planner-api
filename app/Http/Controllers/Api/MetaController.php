@@ -13,19 +13,29 @@ use Symfony\Component\HttpFoundation\Response;
 
 class MetaController extends Controller
 {
-    public function index(Request $request): JsonResponse
-    {
-        $metas = $request->user()
-            ->metas()
-            ->with('categoria')
-            ->orderByDesc('data_inicio')
-            ->orderByDesc('id')
-            ->get();
+public function index(Request $request): JsonResponse
+{
+    $query = $request->user()
+        ->metas()
+        ->with('categoria');
 
-        return response()->json([
-            'data' => MetaResource::collection($metas)->resolve(),
-        ]);
+    if ($request->filled('busca')) {
+        $query->where(
+            'descricao',
+            'like',
+            '%' . $request->string('busca') . '%'
+        );
     }
+
+    $metas = $query
+        ->orderByDesc('data_inicio')
+        ->orderByDesc('id')
+        ->get();
+
+    return response()->json([
+        'data' => MetaResource::collection($metas)->resolve(),
+    ]);
+}
 
     public function store(StoreMetaRequest $request): JsonResponse
     {
