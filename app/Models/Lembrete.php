@@ -13,6 +13,7 @@ class Lembrete extends Model
 
     protected $fillable = [
         'usuario_id',
+        'categoria_id',
         'descricao',
         'data_hora',
         'recorrente',

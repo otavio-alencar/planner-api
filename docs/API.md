@@ -1,5 +1,8 @@
 # API do Planner Virtual
 
+#Ricardo 
+
+
 ## Autenticação
 
 As rotas de metas exigem autenticação.
@@ -252,3 +255,200 @@ Quando não existir nenhuma meta correspondente:
 {
   "data": []
 }
+
+
+---
+
+# Lembretes
+
+Todas as rotas de lembretes exigem autenticação.
+
+Cabeçalhos necessários:
+
+```http
+Authorization: Bearer TOKEN
+Accept: application/json
+```
+
+## Listar lembretes
+
+### Rota
+
+```http
+GET /api/lembretes
+```
+
+### Requisição
+
+Não possui corpo.
+
+### Resposta
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "descricao": "Reunião do projeto",
+      "data_hora": "2026-07-20 19:00:00",
+      "recorrente": false,
+      "frequencia": null,
+      "ativo": true,
+      "categoria": {
+        "id": 1,
+        "nome": "Faculdade",
+        "cor": "#D45D8C"
+      },
+      "created_at": "2026-07-16T01:35:18.000000Z",
+      "updated_at": "2026-07-16T01:35:18.000000Z"
+    }
+  ]
+}
+```
+
+## Criar lembrete
+
+### Rota
+
+```http
+POST /api/lembretes
+```
+
+### Requisição
+
+```json
+{
+  "categoria_id": 1,
+  "descricao": "Reunião do projeto",
+  "data_hora": "2026-07-20 19:00:00",
+  "recorrente": false,
+  "frequencia": null,
+  "ativo": true
+}
+```
+
+### Resposta
+
+```json
+{
+  "message": "Lembrete criado com sucesso.",
+  "data": {
+    "id": 1,
+    "descricao": "Reunião do projeto",
+    "data_hora": "2026-07-20 19:00:00",
+    "recorrente": false,
+    "frequencia": null,
+    "ativo": true,
+    "categoria": {
+      "id": 1,
+      "nome": "Faculdade",
+      "cor": "#D45D8C"
+    }
+  }
+}
+```
+
+## Consultar um lembrete
+
+### Rota
+
+```http
+GET /api/lembretes/{id}
+```
+
+### Requisição
+
+Não possui corpo.
+
+### Resposta
+
+```json
+{
+  "data": {
+    "id": 1,
+    "descricao": "Reunião do projeto",
+    "data_hora": "2026-07-20 19:00:00",
+    "recorrente": false,
+    "frequencia": null,
+    "ativo": true,
+    "categoria": {
+      "id": 1,
+      "nome": "Faculdade",
+      "cor": "#D45D8C"
+    }
+  }
+}
+```
+
+## Atualizar lembrete
+
+### Rota
+
+```http
+PUT /api/lembretes/{id}
+```
+
+### Requisição
+
+```json
+{
+  "categoria_id": 1,
+  "descricao": "Reunião atualizada do projeto",
+  "data_hora": "2026-07-21 20:00:00",
+  "recorrente": false,
+  "frequencia": null,
+  "ativo": true
+}
+```
+
+### Resposta
+
+```json
+{
+  "message": "Lembrete atualizado com sucesso.",
+  "data": {
+    "id": 1,
+    "descricao": "Reunião atualizada do projeto",
+    "data_hora": "2026-07-21 20:00:00",
+    "recorrente": false,
+    "frequencia": null,
+    "ativo": true,
+    "categoria": {
+      "id": 1,
+      "nome": "Faculdade",
+      "cor": "#D45D8C"
+    }
+  }
+}
+```
+
+## Excluir lembrete
+
+### Rota
+
+```http
+DELETE /api/lembretes/{id}
+```
+
+### Requisição
+
+Não possui corpo.
+
+### Resposta
+
+```json
+{
+  "message": "Lembrete excluído com sucesso."
+}
+```
+
+## Campos aceitos
+
+```text
+categoria_id: número inteiro ou null
+descricao: texto com até 255 caracteres
+data_hora: formato AAAA-MM-DD HH:MM:SS
+recorrente: true ou false
+frequencia: DIARIA, SEMANAL, MENSAL, ANUAL ou null
+ativo: true ou false
+```
