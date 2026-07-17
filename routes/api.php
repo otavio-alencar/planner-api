@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\MetaController;
+use App\Http\Controllers\Api\TarefaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\CategoriaController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +14,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/perfil', [AuthController::class, 'meuPerfil']);
 
-    Route::apiResource('categorias', CategoriaController::class);
-
+    Route::apiResource('tarefas', TarefaController::class);
 });
