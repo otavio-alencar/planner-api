@@ -29,4 +29,9 @@ class Usuario extends Authenticatable
     public function tarefas(){
         return $this->hasMany(Tarefa::class, 'usuario_id');
     }
+    
+    public function lembretes(){
+        return $this->hasMany(Lembrete::class, 'usuario_id');
+    }
+
 }

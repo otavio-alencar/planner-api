@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\MetaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\CategoriaController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\LembreteController;
 
 Route::post('/registrar', [AuthController::class, 'registrar']);
 Route::post('/login', [AuthController::class, 'login']);

@@ -1,7 +1,7 @@
 <?php
 
-test('the application returns a successful response', function () {
-    $response = $this->get('/');
+test('a API está funcionando', function () {
+    $response = $this->getJson('/api/metas');
 
-    $response->assertStatus(200);
+    $response->assertStatus(401);
 });
