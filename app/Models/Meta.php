@@ -13,12 +13,21 @@ class Meta extends Model
 
     protected $fillable = [
         'usuario_id',
+        'categoria_id',
         'descricao',
         'status',
         'periodo',
         'data_inicio',
         'data_fim',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'data_inicio' => 'date:Y-m-d',
+            'data_fim' => 'date:Y-m-d',
+        ];
+    }
 
     public function usuario()
     {
@@ -29,6 +38,4 @@ class Meta extends Model
     {
         return $this->belongsTo(Categoria::class);
     }
-
-
 }
