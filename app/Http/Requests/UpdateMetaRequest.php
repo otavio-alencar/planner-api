@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateMetaRequest extends FormRequest
 {
@@ -16,17 +17,18 @@ class UpdateMetaRequest extends FormRequest
     {
         return [
             'categoria_id' => [
+                'sometimes',
                 'nullable',
                 'integer',
                 'exists:categorias,id',
             ],
             'descricao' => [
-                'required',
+                'sometimes',
                 'string',
                 'max:255',
             ],
             'status' => [
-                'required',
+                'sometimes',
                 Rule::in([
                     'EM_ANDAMENTO',
                     'CUMPRIDA',
@@ -35,7 +37,7 @@ class UpdateMetaRequest extends FormRequest
                 ]),
             ],
             'periodo' => [
-                'required',
+                'sometimes',
                 Rule::in([
                     'SEMANAL',
                     'MENSAL',
@@ -43,15 +45,55 @@ class UpdateMetaRequest extends FormRequest
                 ]),
             ],
             'data_inicio' => [
-                'required',
+                'sometimes',
                 'date_format:Y-m-d',
             ],
             'data_fim' => [
-                'required',
+                'sometimes',
                 'date_format:Y-m-d',
-                'after_or_equal:data_inicio',
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if (
+                !$this->has('data_inicio')
+                && !$this->has('data_fim')
+            ) {
+                return;
+            }
+
+            $meta = $this->user()
+                ->metas()
+                ->find($this->route('meta'));
+
+            if (!$meta) {
+                return;
+            }
+
+            $dataInicio = $this->input(
+                'data_inicio',
+                $meta->data_inicio?->format('Y-m-d')
+            );
+
+            $dataFim = $this->input(
+                'data_fim',
+                $meta->data_fim?->format('Y-m-d')
+            );
+
+            if ($dataInicio && $dataFim && $dataFim < $dataInicio) {
+                $validator->errors()->add(
+                    'data_fim',
+                    'A data final deve ser igual ou posterior à data inicial.'
+                );
+            }
+        });
     }
 
     public function messages(): array
@@ -59,18 +101,12 @@ class UpdateMetaRequest extends FormRequest
         return [
             'categoria_id.integer' => 'O identificador da categoria deve ser um número inteiro.',
             'categoria_id.exists' => 'A categoria informada não existe.',
-            'descricao.required' => 'A descrição é obrigatória.',
             'descricao.string' => 'A descrição deve ser um texto.',
             'descricao.max' => 'A descrição deve possuir no máximo 255 caracteres.',
-            'status.required' => 'O status é obrigatório.',
             'status.in' => 'O status informado é inválido.',
-            'periodo.required' => 'O período é obrigatório.',
             'periodo.in' => 'O período informado é inválido.',
-            'data_inicio.required' => 'A data inicial é obrigatória.',
             'data_inicio.date_format' => 'A data inicial deve usar o formato AAAA-MM-DD.',
-            'data_fim.required' => 'A data final é obrigatória.',
             'data_fim.date_format' => 'A data final deve usar o formato AAAA-MM-DD.',
-            'data_fim.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
         ];
     }
 }

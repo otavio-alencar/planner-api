@@ -1,19 +1,17 @@
 <?php
 
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\TarefaController;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\CategoriaController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LembreteController;
 use App\Http\Controllers\Api\MetaController;
-use App\Http\Controllers\Api\RelatorioController;
+use App\Http\Controllers\Api\TarefaController;
+use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Route;
 
 Route::post('/registrar', [AuthController::class, 'registrar']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
-
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -39,6 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tarefas/data/{data}', [TarefaController::class, 'buscarPorData']);
     Route::get('/tarefas/turno/{turno}', [TarefaController::class, 'buscarPorTurno']);
     Route::get('/tarefas/usuario/{id}', [TarefaController::class, 'buscarPorUsuario']);
+
+    Route::apiResource('categorias', CategoriaController::class);
+    Route::apiResource('metas', MetaController::class);
+    Route::apiResource('tarefas', TarefaController::class);
+    Route::apiResource('lembretes', LembreteController::class);
     Route::apiResource('tarefas', TarefaController::class);
 
     Route::get('/relatorios/metas', [RelatorioController::class, 'metas']);

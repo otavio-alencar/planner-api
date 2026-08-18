@@ -28,67 +28,77 @@ class LembreteController extends Controller
     }
 
     public function proximos(Request $request): JsonResponse
-{
-    $lembretes = $request->user()
-        ->lembretes()
-        ->with('categoria')
-        ->where('ativo', true)
-        ->where('data_hora', '>=', now())
-        ->orderBy('data_hora')
-        ->orderBy('id')
-        ->get();
+    {
+        $referencia = now();
 
-    return response()->json([
-        'data' => LembreteResource::collection($lembretes)->resolve(),
-    ]);
-}
+        $lembretes = $request->user()
+            ->lembretes()
+            ->with('categoria')
+            ->where('ativo', true)
+            ->get()
+            ->filter(function (Lembrete $lembrete) use ($referencia) {
+                $proxima = $lembrete->proximaOcorrencia($referencia);
+
+                return $proxima && $proxima->gte($referencia);
+            })
+            ->sortBy(function (Lembrete $lembrete) use ($referencia) {
+                return $lembrete
+                    ->proximaOcorrencia($referencia)
+                    ?->timestamp ?? PHP_INT_MAX;
+            })
+            ->values();
+
+        return response()->json([
+            'data' => LembreteResource::collection($lembretes)->resolve(),
+        ]);
+    }
 
     public function ativos(Request $request): JsonResponse
-{
-    $lembretes = $request->user()
-        ->lembretes()
-        ->with('categoria')
-        ->where('ativo', true)
-        ->orderBy('data_hora')
-        ->orderBy('id')
-        ->get();
+    {
+        $lembretes = $request->user()
+            ->lembretes()
+            ->with('categoria')
+            ->where('ativo', true)
+            ->orderBy('data_hora')
+            ->orderBy('id')
+            ->get();
 
-    return response()->json([
-        'data' => LembreteResource::collection($lembretes)->resolve(),
-    ]);
-}
+        return response()->json([
+            'data' => LembreteResource::collection($lembretes)->resolve(),
+        ]);
+    }
 
     public function recorrentes(Request $request): JsonResponse
-{
-    $lembretes = $request->user()
-        ->lembretes()
-        ->with('categoria')
-        ->where('recorrente', true)
-        ->orderBy('data_hora')
-        ->orderBy('id')
-        ->get();
+    {
+        $lembretes = $request->user()
+            ->lembretes()
+            ->with('categoria')
+            ->where('recorrente', true)
+            ->orderBy('data_hora')
+            ->orderBy('id')
+            ->get();
 
-    return response()->json([
-        'data' => LembreteResource::collection($lembretes)->resolve(),
-    ]);
-}
+        return response()->json([
+            'data' => LembreteResource::collection($lembretes)->resolve(),
+        ]);
+    }
 
     public function buscarPorData(
-    Request $request,
-    string $data
-): JsonResponse {
-    $lembretes = $request->user()
-        ->lembretes()
-        ->with('categoria')
-        ->whereDate('data_hora', $data)
-        ->orderBy('data_hora')
-        ->orderBy('id')
-        ->get();
+        Request $request,
+        string $data
+    ): JsonResponse {
+        $lembretes = $request->user()
+            ->lembretes()
+            ->with('categoria')
+            ->whereDate('data_hora', $data)
+            ->orderBy('data_hora')
+            ->orderBy('id')
+            ->get();
 
-    return response()->json([
-        'data' => LembreteResource::collection($lembretes)->resolve(),
-    ]);
-}
+        return response()->json([
+            'data' => LembreteResource::collection($lembretes)->resolve(),
+        ]);
+    }
 
     public function store(StoreLembreteRequest $request): JsonResponse
     {
@@ -127,7 +137,7 @@ class LembreteController extends Controller
 
         $dados = $request->validated();
 
-        if (!$dados['recorrente']) {
+        if (array_key_exists('recorrente', $dados) && !$dados['recorrente']) {
             $dados['frequencia'] = null;
         }
 
@@ -152,17 +162,17 @@ class LembreteController extends Controller
     }
 
     public function buscarPorUsuario(int $id): JsonResponse
-{
-    $lembretes = Lembrete::with('categoria')
-        ->where('usuario_id', $id)
-        ->orderBy('data_hora')
-        ->orderBy('id')
-        ->get();
+    {
+        $lembretes = Lembrete::with('categoria')
+            ->where('usuario_id', $id)
+            ->orderBy('data_hora')
+            ->orderBy('id')
+            ->get();
 
-    return response()->json([
-        'data' => LembreteResource::collection($lembretes)->resolve(),
-    ]);
-}
+        return response()->json([
+            'data' => LembreteResource::collection($lembretes)->resolve(),
+        ]);
+    }
 
     private function buscarLembreteDoUsuario(
         Request $request,

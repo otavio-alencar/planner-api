@@ -15,6 +15,7 @@ class LembreteResource extends JsonResource
             'data_hora' => $this->data_hora?->format('Y-m-d H:i:s'),
             'recorrente' => $this->recorrente,
             'frequencia' => $this->frequencia,
+            'proxima_ocorrencia' => $this->proximaOcorrencia()?->format('Y-m-d H:i:s'),
             'ativo' => $this->ativo,
             'categoria' => $this->whenLoaded('categoria', function () {
                 if (!$this->categoria) {

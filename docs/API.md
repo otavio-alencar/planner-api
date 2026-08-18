@@ -2,11 +2,11 @@
 
 Documentação das rotas disponíveis no back-end do Planner Virtual.
 
-## Responsável
+## Responsável pela documentação
 
 **Ricardo**
 
-> Esta documentação será atualizada conforme novas funcionalidades forem integradas ao back-end.
+> Este documento descreve o comportamento atual da API integrada. Funcionalidades implementadas por outros integrantes também são documentadas aqui para servir como referência de integração do projeto.
 
 ---
 
@@ -15,22 +15,14 @@ Documentação das rotas disponíveis no back-end do Planner Virtual.
 - [Informações gerais](#informações-gerais)
 - [Autenticação](#autenticação)
 - [Padrão das respostas](#padrão-das-respostas)
+- [Categorias](#categorias)
 - [Metas](#metas)
-  - [Listar metas](#listar-metas)
-  - [Buscar metas por descrição](#buscar-metas-por-descrição)
-  - [Criar meta](#criar-meta)
-  - [Consultar meta](#consultar-meta)
-  - [Atualizar meta](#atualizar-meta)
-  - [Excluir meta](#excluir-meta)
-  - [Campos de meta](#campos-de-meta)
+- [Tarefas](#tarefas)
 - [Lembretes](#lembretes)
-  - [Listar lembretes](#listar-lembretes)
-  - [Criar lembrete](#criar-lembrete)
-  - [Consultar lembrete](#consultar-lembrete)
-  - [Atualizar lembrete](#atualizar-lembrete)
-  - [Excluir lembrete](#excluir-lembrete)
-  - [Campos de lembrete](#campos-de-lembrete)
+- [Dashboard](#dashboard)
 - [Códigos HTTP](#códigos-http)
+- [Erros de validação](#erros-de-validação)
+- [Observações para integração com o front-end](#observações-para-integração-com-o-front-end)
 
 ---
 
@@ -50,7 +42,7 @@ GET http://127.0.0.1:8000/api/metas
 
 ## Formato dos dados
 
-As requisições e respostas utilizam o formato JSON.
+As requisições e respostas utilizam JSON.
 
 Cabeçalhos recomendados:
 
@@ -59,37 +51,140 @@ Accept: application/json
 Content-Type: application/json
 ```
 
-O cabeçalho `Content-Type` deve ser enviado nas requisições que possuem corpo JSON, como `POST` e `PUT`.
+O cabeçalho `Content-Type` deve ser enviado nas requisições que possuem corpo JSON.
+
+## Rotas públicas e protegidas
+
+As rotas de registro e login são públicas:
+
+```text
+POST /api/registrar
+POST /api/login
+```
+
+As demais rotas descritas neste documento estão no grupo protegido por `auth:sanctum` e exigem autenticação.
 
 ---
 
 # Autenticação
 
-As rotas de metas e lembretes exigem autenticação por Bearer Token.
+A API utiliza autenticação por Bearer Token com Laravel Sanctum.
 
-Cabeçalho obrigatório:
+Nas rotas protegidas, envie:
 
 ```http
 Authorization: Bearer SEU_TOKEN
-```
-
-Exemplo completo:
-
-```http
-Authorization: Bearer 1|exemplo-de-token
 Accept: application/json
 Content-Type: application/json
 ```
 
-Cada usuário autenticado deve acessar somente os próprios registros.
+## Resumo das rotas de autenticação
+
+- **Método:** `POST` — **Rota:** `/api/registrar` — **Protegida:** Não — **Descrição:** Registra um usuário
+- **Método:** `POST` — **Rota:** `/api/login` — **Protegida:** Não — **Descrição:** Autentica e retorna um token
+- **Método:** `POST` — **Rota:** `/api/logout` — **Protegida:** Sim — **Descrição:** Revoga o token atual
+- **Método:** `GET` — **Rota:** `/api/perfil` — **Protegida:** Sim — **Descrição:** Retorna o usuário autenticado
+
+
+## Registrar usuário
+
+```http
+POST /api/registrar
+```
+
+Corpo:
+
+```json
+{
+  "nome": "Usuário Exemplo",
+  "email": "usuario@example.com",
+  "password": "1234",
+  "password_confirmation": "1234"
+}
+```
+
+Regras principais:
+
+- **Campo:** `nome` — **Regra:** obrigatório, texto, máximo de 255 caracteres
+- **Campo:** `email` — **Regra:** obrigatório, e-mail válido, único em `usuarios`, máximo de 255 caracteres
+- **Campo:** `password` — **Regra:** obrigatório, texto, mínimo de 4 caracteres e confirmação obrigatória
+- **Campo:** `password_confirmation` — **Regra:** deve coincidir com `password`
+
+
+Sucesso: `201 Created`.
+
+A resposta contém a mensagem `Usuário registrado com sucesso` e o objeto `usuario`.
+
+## Login
+
+```http
+POST /api/login
+```
+
+Corpo:
+
+```json
+{
+  "email": "usuario@example.com",
+  "password": "1234"
+}
+```
+
+Sucesso: `200 OK`.
+
+A resposta contém:
+
+```json
+{
+  "message": "Login bem-sucedido",
+  "token": "TOKEN_GERADO",
+  "usuario": {}
+}
+```
+
+Credenciais inválidas retornam:
+
+```json
+{
+  "message": "Credenciais inválidas"
+}
+```
+
+Status: `401 Unauthorized`.
+
+## Perfil
+
+```http
+GET /api/perfil
+```
+
+Retorna diretamente os dados do usuário autenticado.
+
+## Logout
+
+```http
+POST /api/logout
+```
+
+Revoga o token de acesso utilizado na requisição.
+
+Resposta:
+
+```json
+{
+  "message": "Logout bem-sucedido"
+}
+```
+
+Status: `200 OK`.
 
 ---
 
 # Padrão das respostas
 
-## Resposta com uma coleção
+A API possui formatos de resposta diferentes entre alguns módulos porque as funcionalidades foram integradas em etapas distintas.
 
-As rotas de listagem retornam os registros dentro da propriedade `data`.
+Metas e lembretes utilizam principalmente:
 
 ```json
 {
@@ -97,27 +192,124 @@ As rotas de listagem retornam os registros dentro da propriedade `data`.
 }
 ```
 
-## Resposta com um único registro
+Categorias e tarefas retornam, em algumas operações, o objeto ou a coleção diretamente.
+
+Nas operações de criação e atualização, é comum existir também uma mensagem de sucesso.
+
+---
+
+# Categorias
+
+As categorias organizam os demais elementos do planner.
+
+## Resumo das rotas de categorias
+
+- **Método:** `GET` — **Rota:** `/api/categorias` — **Descrição:** Lista categorias
+- **Método:** `POST` — **Rota:** `/api/categorias` — **Descrição:** Cria categoria
+- **Método:** `GET` — **Rota:** `/api/categorias/{id}` — **Descrição:** Consulta categoria
+- **Método:** `PUT` / `PATCH` — **Rota:** `/api/categorias/{id}` — **Descrição:** Atualiza categoria
+- **Método:** `DELETE` — **Rota:** `/api/categorias/{id}` — **Descrição:** Exclui categoria
+
+
+Todas exigem Bearer Token.
+
+## Listar categorias
+
+```http
+GET /api/categorias
+```
+
+Sucesso: `200 OK`.
+
+A resposta é uma coleção JSON de categorias.
+
+## Criar categoria
+
+```http
+POST /api/categorias
+```
+
+Corpo:
 
 ```json
 {
-  "data": {
-    "id": 1
-  }
+  "nome": "Faculdade",
+  "cor": "#D45D8C"
 }
 ```
 
-## Resposta após criação, atualização ou exclusão
+Campos:
 
-As operações podem retornar uma mensagem indicando o resultado.
+- **Campo:** `nome` — **Obrigatório na criação:** Sim — **Regra:** texto, máximo de 255 caracteres
+- **Campo:** `cor` — **Obrigatório na criação:** Sim — **Regra:** texto, máximo de 20 caracteres
+
+
+Sucesso: `201 Created`.
 
 ```json
 {
-  "message": "Operação realizada com sucesso."
+  "message": "Categoria criada com sucesso",
+  "categoria": {}
 }
 ```
 
-Nas operações de criação e atualização, a resposta também apresenta o registro na propriedade `data`.
+## Consultar categoria
+
+```http
+GET /api/categorias/{id}
+```
+
+Sucesso: `200 OK`.
+
+Se não existir:
+
+```json
+{
+  "message": "Categoria não encontrada"
+}
+```
+
+Status: `404 Not Found`.
+
+## Atualizar categoria
+
+```http
+PUT /api/categorias/{id}
+```
+
+ou
+
+```http
+PATCH /api/categorias/{id}
+```
+
+A atualização aceita campos parciais.
+
+Exemplo:
+
+```json
+{
+  "cor": "#3366FF"
+}
+```
+
+Sucesso: `200 OK`.
+
+## Excluir categoria
+
+```http
+DELETE /api/categorias/{id}
+```
+
+Sucesso:
+
+```json
+{
+  "message": "Categoria excluída com sucesso"
+}
+```
+
+Status: `200 OK`.
 
 ---
 
@@ -127,112 +319,57 @@ As metas representam objetivos cadastrados pelo usuário.
 
 ## Resumo das rotas de metas
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/metas` | Lista as metas do usuário |
-| `GET` | `/api/metas?busca={texto}` | Busca metas pela descrição |
-| `POST` | `/api/metas` | Cria uma meta |
-| `GET` | `/api/metas/{id}` | Consulta uma meta |
-| `PUT` | `/api/metas/{id}` | Atualiza uma meta |
-| `DELETE` | `/api/metas/{id}` | Exclui uma meta |
+- **Método:** `GET` — **Rota:** `/api/metas` — **Descrição:** Lista metas do usuário autenticado
+- **Método:** `GET` — **Rota:** `/api/metas?busca={texto}` — **Descrição:** Busca pela descrição
+- **Método:** `GET` — **Rota:** `/api/metas/status/{status}` — **Descrição:** Filtra por status
+- **Método:** `GET` — **Rota:** `/api/metas/categoria/{id}` — **Descrição:** Filtra por categoria
+- **Método:** `GET` — **Rota:** `/api/metas/periodo/{periodo}` — **Descrição:** Filtra por período
+- **Método:** `GET` — **Rota:** `/api/metas/usuario/{id}` — **Descrição:** Lista metas pelo ID de usuário informado
+- **Método:** `POST` — **Rota:** `/api/metas` — **Descrição:** Cria meta
+- **Método:** `GET` — **Rota:** `/api/metas/{id}` — **Descrição:** Consulta meta
+- **Método:** `PUT` / `PATCH` — **Rota:** `/api/metas/{id}` — **Descrição:** Atualiza meta
+- **Método:** `DELETE` — **Rota:** `/api/metas/{id}` — **Descrição:** Exclui meta
 
----
 
-## Listar metas
-
-Retorna todas as metas pertencentes ao usuário autenticado.
-
-### Requisição
+## Listar e buscar metas
 
 ```http
 GET /api/metas
 ```
 
-Não possui corpo JSON.
+A rota aceita o parâmetro opcional `busca`:
 
-### Resposta de sucesso
+```http
+GET /api/metas?busca=projeto
+```
 
-**Status:** `200 OK`
+A busca procura o texto em qualquer parte da descrição.
+
+Resposta:
 
 ```json
 {
   "data": [
     {
       "id": 1,
-      "descricao": "Concluir o projeto",
-      "status": "EM_ANDAMENTO",
-      "periodo": "MENSAL",
-      "data_inicio": "2026-07-01",
-      "data_fim": "2026-07-31",
-      "categoria": {
-        "id": 1,
-        "nome": "Faculdade",
-        "cor": "#D45D8C"
-      },
-      "created_at": "2026-07-15T20:00:00.000000Z",
-      "updated_at": "2026-07-15T20:00:00.000000Z"
-    }
-  ]
-}
-```
-
-### Resposta sem metas cadastradas
-
-```json
-{
-  "data": []
-}
-```
-
----
-
-## Buscar metas por descrição
-
-Busca metas cujo campo `descricao` contenha o texto informado.
-
-A busca não exige correspondência exata. Por exemplo, o valor `projeto` pode encontrar a descrição `Finalizar projeto do planner`.
-
-### Parâmetro de consulta
-
-| Parâmetro | Tipo | Obrigatório | Descrição |
-|---|---|---:|---|
-| `busca` | string | Não | Texto procurado na descrição da meta |
-
-### Requisição
-
-```http
-GET /api/metas?busca=projeto
-```
-
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
-
-```json
-{
-  "data": [
-    {
-      "id": 2,
       "descricao": "Finalizar projeto do planner",
       "status": "EM_ANDAMENTO",
       "periodo": "MENSAL",
-      "data_inicio": "2026-07-01",
-      "data_fim": "2026-07-31",
+      "data_inicio": "2026-08-01",
+      "data_fim": "2026-08-31",
       "categoria": {
         "id": 1,
         "nome": "Faculdade",
         "cor": "#D45D8C"
       },
-      "created_at": "2026-07-15T20:00:00.000000Z",
-      "updated_at": "2026-07-15T20:00:00.000000Z"
+      "created_at": "2026-08-01T12:00:00.000000Z",
+      "updated_at": "2026-08-01T12:00:00.000000Z"
     }
   ]
 }
 ```
 
-### Resposta sem resultados
+Sem resultados:
 
 ```json
 {
@@ -240,19 +377,41 @@ Não possui corpo JSON.
 }
 ```
 
----
+## Filtros de metas
+
+### Por status
+
+```http
+GET /api/metas/status/EM_ANDAMENTO
+```
+
+### Por categoria
+
+```http
+GET /api/metas/categoria/1
+```
+
+### Por período
+
+```http
+GET /api/metas/periodo/MENSAL
+```
+
+### Por usuário
+
+```http
+GET /api/metas/usuario/1
+```
+
+Os filtros retornam a coleção dentro de `data`.
 
 ## Criar meta
-
-Cria uma nova meta para o usuário autenticado.
-
-### Requisição
 
 ```http
 POST /api/metas
 ```
 
-### Corpo da requisição
+Corpo:
 
 ```json
 {
@@ -260,177 +419,50 @@ POST /api/metas
   "descricao": "Concluir o projeto",
   "status": "EM_ANDAMENTO",
   "periodo": "MENSAL",
-  "data_inicio": "2026-07-01",
-  "data_fim": "2026-07-31"
+  "data_inicio": "2026-08-01",
+  "data_fim": "2026-08-31"
 }
 ```
 
-### Resposta de sucesso
-
-**Status:** `201 Created`
-
-```json
-{
-  "message": "Meta criada com sucesso.",
-  "data": {
-    "id": 1,
-    "descricao": "Concluir o projeto",
-    "status": "EM_ANDAMENTO",
-    "periodo": "MENSAL",
-    "data_inicio": "2026-07-01",
-    "data_fim": "2026-07-31",
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-15T20:00:00.000000Z",
-    "updated_at": "2026-07-15T20:00:00.000000Z"
-  }
-}
-```
-
----
+Sucesso: `201 Created`.
 
 ## Consultar meta
-
-Retorna uma meta específica pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador da meta |
-
-### Requisição
 
 ```http
 GET /api/metas/{id}
 ```
 
-Exemplo:
-
-```http
-GET /api/metas/1
-```
-
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
-
-```json
-{
-  "data": {
-    "id": 1,
-    "descricao": "Concluir o projeto",
-    "status": "EM_ANDAMENTO",
-    "periodo": "MENSAL",
-    "data_inicio": "2026-07-01",
-    "data_fim": "2026-07-31",
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-15T20:00:00.000000Z",
-    "updated_at": "2026-07-15T20:00:00.000000Z"
-  }
-}
-```
-
----
+A consulta é feita dentro das metas do usuário autenticado.
 
 ## Atualizar meta
-
-Atualiza os dados de uma meta pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador da meta |
-
-### Requisição
 
 ```http
 PUT /api/metas/{id}
 ```
 
-Exemplo:
+ou
 
 ```http
-PUT /api/metas/1
+PATCH /api/metas/{id}
 ```
 
-### Corpo da requisição
+A atualização aceita campos parciais. Exemplo:
 
 ```json
 {
-  "categoria_id": 1,
-  "descricao": "Concluir e apresentar o projeto",
-  "status": "CUMPRIDA",
-  "periodo": "MENSAL",
-  "data_inicio": "2026-07-01",
-  "data_fim": "2026-07-31"
+  "status": "CUMPRIDA"
 }
 ```
 
-### Resposta de sucesso
-
-**Status:** `200 OK`
-
-```json
-{
-  "message": "Meta atualizada com sucesso.",
-  "data": {
-    "id": 1,
-    "descricao": "Concluir e apresentar o projeto",
-    "status": "CUMPRIDA",
-    "periodo": "MENSAL",
-    "data_inicio": "2026-07-01",
-    "data_fim": "2026-07-31",
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-15T20:00:00.000000Z",
-    "updated_at": "2026-07-16T01:38:19.000000Z"
-  }
-}
-```
-
----
+Quando `data_inicio` ou `data_fim` for alterada isoladamente, a validação também considera a outra data já armazenada na meta. A data final não pode ser anterior à data inicial.
 
 ## Excluir meta
-
-Exclui uma meta pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador da meta |
-
-### Requisição
 
 ```http
 DELETE /api/metas/{id}
 ```
 
-Exemplo:
-
-```http
-DELETE /api/metas/1
-```
-
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
+Sucesso:
 
 ```json
 {
@@ -438,95 +470,212 @@ Não possui corpo JSON.
 }
 ```
 
----
-
 ## Campos de meta
 
-| Campo | Tipo | Obrigatório | Formato ou valores aceitos | Descrição |
-|---|---|---:|---|---|
-| `categoria_id` | integer | Sim | ID de uma categoria existente | Categoria relacionada à meta |
-| `descricao` | string | Sim | Texto | Descrição da meta |
-| `status` | string | Sim | `EM_ANDAMENTO`, `CUMPRIDA`, `PARCIAL`, `NAO_CUMPRIDA` | Situação atual da meta |
-| `periodo` | string | Sim | `SEMANAL`, `MENSAL`, `ANUAL` | Período de acompanhamento |
-| `data_inicio` | date | Sim | `AAAA-MM-DD` | Data inicial da meta |
-| `data_fim` | date | Sim | `AAAA-MM-DD` | Data final da meta |
+- **Campo:** `categoria_id` — **Criação:** Opcional — **Atualização:** Opcional — **Valores / formato:** ID existente ou `null`
+- **Campo:** `descricao` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** texto, máximo 255
+- **Campo:** `status` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `EM_ANDAMENTO`, `CUMPRIDA`, `PARCIAL`, `NAO_CUMPRIDA`
+- **Campo:** `periodo` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `SEMANAL`, `MENSAL`, `ANUAL`
+- **Campo:** `data_inicio` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `AAAA-MM-DD`
+- **Campo:** `data_fim` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `AAAA-MM-DD`, igual ou posterior a `data_inicio`
 
-### Valores aceitos para `status`
 
-```text
-EM_ANDAMENTO
-CUMPRIDA
-PARCIAL
-NAO_CUMPRIDA
+---
+
+# Tarefas
+
+As tarefas representam atividades planejadas pelo usuário.
+
+## Resumo das rotas de tarefas
+
+- **Método:** `GET` — **Rota:** `/api/tarefas` — **Descrição:** Lista tarefas do usuário autenticado
+- **Método:** `GET` — **Rota:** `/api/tarefas/status/{status}` — **Descrição:** Filtra por status
+- **Método:** `GET` — **Rota:** `/api/tarefas/categoria/{id}` — **Descrição:** Filtra por categoria
+- **Método:** `GET` — **Rota:** `/api/tarefas/prioridade/{prioridade}` — **Descrição:** Filtra por prioridade
+- **Método:** `GET` — **Rota:** `/api/tarefas/data/{data}` — **Descrição:** Filtra por data
+- **Método:** `GET` — **Rota:** `/api/tarefas/turno/{turno}` — **Descrição:** Filtra por turno
+- **Método:** `GET` — **Rota:** `/api/tarefas/usuario/{id}` — **Descrição:** Lista tarefas pelo ID de usuário informado
+- **Método:** `POST` — **Rota:** `/api/tarefas` — **Descrição:** Cria tarefa
+- **Método:** `GET` — **Rota:** `/api/tarefas/{id}` — **Descrição:** Consulta tarefa
+- **Método:** `PUT` / `PATCH` — **Rota:** `/api/tarefas/{id}` — **Descrição:** Atualiza tarefa
+- **Método:** `DELETE` — **Rota:** `/api/tarefas/{id}` — **Descrição:** Exclui tarefa
+
+
+## Listar tarefas
+
+```http
+GET /api/tarefas
 ```
 
-### Valores aceitos para `periodo`
+Retorna diretamente uma coleção JSON das tarefas do usuário autenticado, com a relação `categoria` carregada.
 
-```text
-SEMANAL
-MENSAL
-ANUAL
+## Criar tarefa
+
+```http
+POST /api/tarefas
 ```
+
+Corpo:
+
+```json
+{
+  "categoria_id": 1,
+  "descricao": "Estudar para a apresentação",
+  "status": "NAO_CUMPRIDA",
+  "data": "2026-08-15",
+  "hora_inicio": "19:00",
+  "hora_fim": "20:00",
+  "turno": "NOITE",
+  "prioridade": "ALTA"
+}
+```
+
+O campo `status` é opcional na criação. Quando não informado, o Controller utiliza `NAO_CUMPRIDA`.
+
+Sucesso: `201 Created`.
+
+```json
+{
+  "message": "Tarefa criada com sucesso",
+  "tarefa": {}
+}
+```
+
+## Consultar tarefa
+
+```http
+GET /api/tarefas/{id}
+```
+
+A consulta restringe a tarefa ao usuário autenticado.
+
+Se não for encontrada:
+
+```json
+{
+  "message": "Tarefa não encontrada"
+}
+```
+
+Status: `404 Not Found`.
+
+## Atualizar tarefa
+
+```http
+PUT /api/tarefas/{id}
+```
+
+ou
+
+```http
+PATCH /api/tarefas/{id}
+```
+
+Aceita atualização parcial.
+
+Exemplo:
+
+```json
+{
+  "prioridade": "MEDIA"
+}
+```
+
+Quando uma das horas é informada, a validação exige também a outra. `hora_fim` deve ser posterior a `hora_inicio`.
+
+## Excluir tarefa
+
+```http
+DELETE /api/tarefas/{id}
+```
+
+Sucesso:
+
+```json
+{
+  "message": "Tarefa excluída com sucesso"
+}
+```
+
+## Filtros de tarefas
+
+```http
+GET /api/tarefas/status/CUMPRIDA
+GET /api/tarefas/categoria/1
+GET /api/tarefas/prioridade/ALTA
+GET /api/tarefas/data/2026-08-15
+GET /api/tarefas/turno/NOITE
+GET /api/tarefas/usuario/1
+```
+
+Os filtros retornam diretamente uma coleção JSON.
+
+## Campos de tarefa
+
+- **Campo:** `categoria_id` — **Criação:** Opcional — **Atualização:** Opcional — **Valores / formato:** ID existente ou `null`
+- **Campo:** `descricao` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** texto, máximo 255
+- **Campo:** `status` — **Criação:** Opcional — **Atualização:** Opcional — **Valores / formato:** `CUMPRIDA`, `PARCIAL`, `NAO_CUMPRIDA`
+- **Campo:** `data` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** data válida
+- **Campo:** `hora_inicio` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `HH:MM`
+- **Campo:** `hora_fim` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `HH:MM`, posterior a `hora_inicio`
+- **Campo:** `turno` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `MANHA`, `TARDE`, `NOITE`
+- **Campo:** `prioridade` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `ALTA`, `MEDIA`, `BAIXA`
+
 
 ---
 
 # Lembretes
 
-Os lembretes representam compromissos ou avisos cadastrados pelo usuário.
+Os lembretes representam compromissos ou avisos cadastrados pelo usuário e podem ser únicos ou recorrentes.
 
 ## Resumo das rotas de lembretes
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/lembretes` | Lista os lembretes |
-| `POST` | `/api/lembretes` | Cria um lembrete |
-| `GET` | `/api/lembretes/{id}` | Consulta um lembrete |
-| `PUT` | `/api/lembretes/{id}` | Atualiza um lembrete |
-| `DELETE` | `/api/lembretes/{id}` | Exclui um lembrete |
+- **Método:** `GET` — **Rota:** `/api/lembretes` — **Descrição:** Lista lembretes do usuário
+- **Método:** `GET` — **Rota:** `/api/lembretes/proximos` — **Descrição:** Lista próximos lembretes ativos considerando recorrência
+- **Método:** `GET` — **Rota:** `/api/lembretes/ativos` — **Descrição:** Lista lembretes ativos
+- **Método:** `GET` — **Rota:** `/api/lembretes/recorrentes` — **Descrição:** Lista lembretes recorrentes
+- **Método:** `GET` — **Rota:** `/api/lembretes/data/{data}` — **Descrição:** Filtra pela data armazenada
+- **Método:** `GET` — **Rota:** `/api/lembretes/usuario/{id}` — **Descrição:** Lista lembretes pelo ID de usuário informado
+- **Método:** `POST` — **Rota:** `/api/lembretes` — **Descrição:** Cria lembrete
+- **Método:** `GET` — **Rota:** `/api/lembretes/{id}` — **Descrição:** Consulta lembrete
+- **Método:** `PUT` / `PATCH` — **Rota:** `/api/lembretes/{id}` — **Descrição:** Atualiza lembrete
+- **Método:** `DELETE` — **Rota:** `/api/lembretes/{id}` — **Descrição:** Exclui lembrete
 
----
+
+## Estrutura de resposta
+
+Os lembretes são formatados pelo `LembreteResource`.
+
+Exemplo:
+
+```json
+{
+  "id": 1,
+  "descricao": "Revisar conteúdo da disciplina",
+  "data_hora": "2026-08-10 20:00:00",
+  "recorrente": true,
+  "frequencia": "DIARIA",
+  "proxima_ocorrencia": "2026-08-14 20:00:00",
+  "ativo": true,
+  "categoria": {
+    "id": 1,
+    "nome": "Faculdade",
+    "cor": "#D45D8C"
+  },
+  "created_at": "2026-08-10T12:00:00.000000Z",
+  "updated_at": "2026-08-10T12:00:00.000000Z"
+}
+```
+
+`data_hora` representa a data e hora original armazenada no banco. `proxima_ocorrencia` representa a ocorrência calculada pelo back-end.
 
 ## Listar lembretes
-
-Retorna todos os lembretes pertencentes ao usuário autenticado.
-
-Os lembretes são apresentados em ordem de data e hora.
-
-### Requisição
 
 ```http
 GET /api/lembretes
 ```
 
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "descricao": "Reunião do projeto",
-      "data_hora": "2026-07-20 19:00:00",
-      "recorrente": false,
-      "frequencia": null,
-      "ativo": true,
-      "categoria": {
-        "id": 1,
-        "nome": "Faculdade",
-        "cor": "#D45D8C"
-      },
-      "created_at": "2026-07-16T01:35:18.000000Z",
-      "updated_at": "2026-07-16T01:35:18.000000Z"
-    }
-  ]
-}
-```
-
-### Resposta sem lembretes cadastrados
+Resposta:
 
 ```json
 {
@@ -534,197 +683,147 @@ Não possui corpo JSON.
 }
 ```
 
----
+A listagem é ordenada por `data_hora` e, em seguida, por `id`.
+
+## Próximos lembretes
+
+```http
+GET /api/lembretes/proximos
+```
+
+Retorna lembretes ativos que ainda possuem uma ocorrência válida a partir do momento atual.
+
+Para lembretes recorrentes cuja `data_hora` original já passou, a rota calcula a próxima ocorrência e mantém o lembrete na listagem.
+
+Os resultados são ordenados pela próxima ocorrência calculada.
+
+## Lembretes ativos
+
+```http
+GET /api/lembretes/ativos
+```
+
+Retorna os lembretes do usuário com `ativo = true`.
+
+## Lembretes recorrentes
+
+```http
+GET /api/lembretes/recorrentes
+```
+
+Retorna os lembretes com `recorrente = true`.
+
+## Buscar lembretes por data
+
+```http
+GET /api/lembretes/data/2026-08-14
+```
+
+A rota utiliza a data de `data_hora` armazenada no registro. Ela não pesquisa pela `proxima_ocorrencia` calculada.
+
+## Buscar lembretes por usuário
+
+```http
+GET /api/lembretes/usuario/1
+```
+
+Retorna lembretes associados ao `usuario_id` informado.
 
 ## Criar lembrete
-
-Cria um novo lembrete para o usuário autenticado.
-
-### Requisição
 
 ```http
 POST /api/lembretes
 ```
 
-### Corpo da requisição
+Lembrete único:
 
 ```json
 {
   "categoria_id": 1,
-  "descricao": "Reunião do projeto",
-  "data_hora": "2026-07-20 19:00:00",
+  "descricao": "Entregar atividade",
+  "data_hora": "2026-08-15 18:00:00",
   "recorrente": false,
-  "frequencia": null,
   "ativo": true
 }
 ```
 
-### Resposta de sucesso
-
-**Status:** `201 Created`
+Lembrete recorrente:
 
 ```json
 {
-  "message": "Lembrete criado com sucesso.",
-  "data": {
-    "id": 1,
-    "descricao": "Reunião do projeto",
-    "data_hora": "2026-07-20 19:00:00",
-    "recorrente": false,
-    "frequencia": null,
-    "ativo": true,
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-16T01:35:18.000000Z",
-    "updated_at": "2026-07-16T01:35:18.000000Z"
-  }
+  "categoria_id": 1,
+  "descricao": "Revisar planejamento",
+  "data_hora": "2026-08-15 18:00:00",
+  "recorrente": true,
+  "frequencia": "SEMANAL",
+  "ativo": true
 }
 ```
 
----
+Se `recorrente` for `false`, `frequencia` não deve ser informada e será mantida como `null`.
+
+Se `recorrente` for `true`, `frequencia` é obrigatória.
+
+Sucesso: `201 Created`.
 
 ## Consultar lembrete
-
-Retorna um lembrete específico pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador do lembrete |
-
-### Requisição
 
 ```http
 GET /api/lembretes/{id}
 ```
 
-Exemplo:
-
-```http
-GET /api/lembretes/1
-```
-
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
-
-```json
-{
-  "data": {
-    "id": 1,
-    "descricao": "Reunião do projeto",
-    "data_hora": "2026-07-20 19:00:00",
-    "recorrente": false,
-    "frequencia": null,
-    "ativo": true,
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-16T01:35:18.000000Z",
-    "updated_at": "2026-07-16T01:35:18.000000Z"
-  }
-}
-```
-
----
+A consulta é feita dentro dos lembretes do usuário autenticado.
 
 ## Atualizar lembrete
-
-Atualiza os dados de um lembrete pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador do lembrete |
-
-### Requisição
 
 ```http
 PUT /api/lembretes/{id}
 ```
 
-Exemplo:
+ou
 
 ```http
-PUT /api/lembretes/1
+PATCH /api/lembretes/{id}
 ```
 
-### Corpo da requisição
+Aceita atualização parcial.
+
+Exemplo:
 
 ```json
 {
-  "categoria_id": 1,
-  "descricao": "Reunião atualizada do projeto",
-  "data_hora": "2026-07-21 20:00:00",
-  "recorrente": false,
-  "frequencia": null,
-  "ativo": true
+  "ativo": false
 }
 ```
 
-### Resposta de sucesso
-
-**Status:** `200 OK`
+Para transformar um lembrete em recorrente:
 
 ```json
 {
-  "message": "Lembrete atualizado com sucesso.",
-  "data": {
-    "id": 1,
-    "descricao": "Reunião atualizada do projeto",
-    "data_hora": "2026-07-21 20:00:00",
-    "recorrente": false,
-    "frequencia": null,
-    "ativo": true,
-    "categoria": {
-      "id": 1,
-      "nome": "Faculdade",
-      "cor": "#D45D8C"
-    },
-    "created_at": "2026-07-16T01:35:18.000000Z",
-    "updated_at": "2026-07-16T01:38:19.000000Z"
-  }
+  "recorrente": true,
+  "frequencia": "MENSAL"
 }
 ```
 
----
+Para remover a recorrência:
+
+```json
+{
+  "recorrente": false
+}
+```
+
+Nesse caso, o Controller define `frequencia` como `null`.
+
+Quando `frequencia` for enviada na atualização, `recorrente` deve estar presente e ser `true`.
 
 ## Excluir lembrete
-
-Exclui um lembrete pertencente ao usuário autenticado.
-
-### Parâmetro da rota
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `id` | integer | Identificador do lembrete |
-
-### Requisição
 
 ```http
 DELETE /api/lembretes/{id}
 ```
 
-Exemplo:
-
-```http
-DELETE /api/lembretes/1
-```
-
-Não possui corpo JSON.
-
-### Resposta de sucesso
-
-**Status:** `200 OK`
+Sucesso:
 
 ```json
 {
@@ -732,92 +831,129 @@ Não possui corpo JSON.
 }
 ```
 
----
-
 ## Campos de lembrete
 
-| Campo | Tipo | Obrigatório | Formato ou valores aceitos | Descrição |
-|---|---|---:|---|---|
-| `categoria_id` | integer ou null | Não | ID de uma categoria existente | Categoria relacionada ao lembrete |
-| `descricao` | string | Sim | Máximo de 255 caracteres | Descrição do lembrete |
-| `data_hora` | datetime | Sim | `AAAA-MM-DD HH:MM:SS` | Data e hora do lembrete |
-| `recorrente` | boolean | Sim | `true` ou `false` | Informa se o lembrete se repete |
-| `frequencia` | string ou null | Condicional | `DIARIA`, `SEMANAL`, `MENSAL`, `ANUAL` ou `null` | Frequência da recorrência |
-| `ativo` | boolean | Sim | `true` ou `false` | Informa se o lembrete está ativo |
+- **Campo:** `categoria_id` — **Criação:** Opcional — **Atualização:** Opcional — **Valores / formato:** ID existente ou `null`
+- **Campo:** `descricao` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** texto, máximo 255
+- **Campo:** `data_hora` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `AAAA-MM-DD HH:MM:SS`
+- **Campo:** `recorrente` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `true` ou `false`
+- **Campo:** `frequencia` — **Criação:** Condicional — **Atualização:** Condicional — **Valores / formato:** `DIARIA`, `SEMANAL`, `MENSAL`, `ANUAL`
+- **Campo:** `ativo` — **Criação:** Obrigatório — **Atualização:** Opcional — **Valores / formato:** `true` ou `false`
+- **Campo:** `proxima_ocorrencia` — **Criação:** — — **Atualização:** — — **Valores / formato:** campo calculado de resposta
 
-## Regras atuais de recorrência
 
-Quando o lembrete não for recorrente:
+## Regra de recorrência
+
+A recorrência utiliza um único registro de lembrete. Novas linhas não são criadas no banco para cada repetição.
+
+A partir da `data_hora` original, a próxima ocorrência é calculada conforme a frequência:
+
+- **Frequência:** `DIARIA` — **Avanço:** 1 dia
+- **Frequência:** `SEMANAL` — **Avanço:** 1 semana
+- **Frequência:** `MENSAL` — **Avanço:** 1 mês sem ultrapassar o limite válido do mês
+- **Frequência:** `ANUAL` — **Avanço:** 1 ano sem ultrapassar o limite válido do ano
+
+
+O cálculo avança até encontrar a primeira ocorrência igual ou posterior ao momento de referência.
+
+---
+
+# Dashboard
+
+O dashboard consolida informações do usuário autenticado.
+
+```http
+GET /api/dashboard
+```
+
+Status: `200 OK`.
+
+Estrutura:
 
 ```json
 {
-  "recorrente": false,
-  "frequencia": null
+  "data": {
+    "tarefas_pendentes": 2,
+    "tarefas_concluidas": 3,
+    "metas_em_andamento": 1,
+    "proximos_lembretes": [],
+    "indicador_produtividade": 60
+  }
 }
 ```
 
-Quando o lembrete for recorrente, uma frequência deve ser informada:
+## Campos do dashboard
 
-```json
-{
-  "recorrente": true,
-  "frequencia": "DIARIA"
-}
-```
+- **Campo:** `tarefas_pendentes` — **Significado:** tarefas de hoje cujo status é diferente de `CUMPRIDA`
+- **Campo:** `tarefas_concluidas` — **Significado:** tarefas de hoje com status `CUMPRIDA`
+- **Campo:** `metas_em_andamento` — **Significado:** quantidade de metas com status `EM_ANDAMENTO`
+- **Campo:** `proximos_lembretes` — **Significado:** até 5 lembretes ativos cuja `data_hora` armazenada ainda não passou
+- **Campo:** `indicador_produtividade` — **Significado:** percentual de tarefas concluídas entre as tarefas do dia
 
-### Valores aceitos para `frequencia`
+
+O indicador é calculado por:
 
 ```text
-DIARIA
-SEMANAL
-MENSAL
-ANUAL
+tarefas_concluidas / total_de_tarefas_do_dia * 100
 ```
 
-> O comportamento completo das ocorrências recorrentes será detalhado após a implementação da funcionalidade de recorrência.
+Quando não há tarefas no dia, o indicador retorna `0`.
+
+> Observação: atualmente o dashboard seleciona `proximos_lembretes` diretamente pela `data_hora` armazenada. A rota específica `/api/lembretes/proximos` possui lógica adicional para considerar ocorrências recorrentes cuja data original já passou.
 
 ---
 
 # Códigos HTTP
 
-| Código | Significado | Situação comum |
-|---:|---|---|
-| `200` | OK | Consulta, atualização ou exclusão concluída |
-| `201` | Created | Registro criado com sucesso |
-| `401` | Unauthorized | Token ausente ou inválido |
-| `404` | Not Found | Registro não encontrado para o usuário |
-| `422` | Unprocessable Entity | Dados enviados não passaram pela validação |
-| `500` | Internal Server Error | Erro interno inesperado |
+- **Código:** `200` — **Significado:** OK — **Situação comum:** consulta, atualização, exclusão ou login concluído
+- **Código:** `201` — **Significado:** Created — **Situação comum:** usuário ou registro criado
+- **Código:** `401` — **Significado:** Unauthorized — **Situação comum:** token ausente/inválido ou credenciais inválidas
+- **Código:** `404` — **Significado:** Not Found — **Situação comum:** registro não encontrado
+- **Código:** `422` — **Significado:** Unprocessable Entity — **Situação comum:** dados não passaram pela validação
+- **Código:** `500` — **Significado:** Internal Server Error — **Situação comum:** erro interno inesperado
+
 
 ---
 
-# Exemplo de erro de validação
+# Erros de validação
 
-Quando algum campo obrigatório não for enviado ou possuir valor inválido, a API pode retornar:
+Quando os dados enviados não atendem às regras do Laravel, a API pode responder com `422 Unprocessable Entity`.
 
-**Status:** `422 Unprocessable Entity`
+Exemplo:
 
 ```json
 {
   "message": "The given data was invalid.",
   "errors": {
     "descricao": [
-      "O campo descrição é obrigatório."
+      "A descrição é obrigatória."
     ]
   }
 }
 ```
 
-> O texto exato da propriedade `message` pode variar conforme a configuração global de tratamento de erros do Laravel.
+O texto exato de `message` pode variar conforme a configuração global do tratamento de exceções.
+
+## Regras importantes
+
+- Metas não aceitam `data_fim` anterior a `data_inicio`, inclusive em atualização parcial.
+- Tarefas exigem `hora_fim` posterior a `hora_inicio`.
+- Em atualização de tarefa, ao informar uma das horas, a outra também é exigida.
+- Lembretes recorrentes exigem uma frequência válida.
+- A frequência do lembrete somente pode ser informada quando `recorrente` for `true`.
+- IDs de categoria recebidos por metas, tarefas e lembretes devem existir na tabela `categorias`.
 
 ---
 
 # Observações para integração com o front-end
 
-- Sempre enviar o Bearer Token nas rotas protegidas.
+- Sempre enviar Bearer Token nas rotas protegidas.
 - Utilizar os nomes dos campos exatamente como documentados.
-- Datas de metas utilizam o formato `AAAA-MM-DD`.
-- A data e hora dos lembretes utilizam o formato `AAAA-MM-DD HH:MM:SS`.
-- Os valores de `status`, `periodo` e `frequencia` devem ser enviados em letras maiúsculas.
-- Uma listagem sem registros retorna `"data": []`.
-- O front-end não deve depender somente das mensagens de texto; também deve verificar o código HTTP da resposta.
+- Datas de metas usam `AAAA-MM-DD`.
+- Horários das tarefas usam `HH:MM`.
+- A data e hora dos lembretes usam `AAAA-MM-DD HH:MM:SS`.
+- Valores de enumeração devem respeitar as letras maiúsculas definidas pela API.
+- Metas e lembretes normalmente encapsulam coleções e registros em `data`.
+- Categorias e tarefas possuem respostas diretas em algumas operações.
+- O front-end deve verificar o código HTTP e não depender somente da mensagem textual.
+- `proxima_ocorrencia` é um campo calculado e não deve ser enviado em requisições de criação ou atualização.
