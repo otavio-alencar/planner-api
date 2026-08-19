@@ -154,7 +154,7 @@ class LembreteController extends Controller
     {
         $lembrete = $this->buscarLembreteDoUsuario($request, $id);
 
-        $lembrete->delete();
+        $lembrete->delete($id);
 
         return response()->json([
             'message' => 'Lembrete excluído com sucesso.',
